@@ -62,22 +62,18 @@ if not current_df.empty:
     m4.metric("🗺️ Unique LGAs Screened", current_df['LGA'].dropna().nunique())
     st.markdown("---")
 
-# HERE IS WHERE COL1 AND COL2 ARE CREATED FIRST!
 col1, col2 = st.columns([3, 2])
 
 # --- COLUMN 1: ENHANCED INTERACTIVE ENTRY FORM ---
 with col1:
     st.markdown('<p class="section-header">📝 Case Screening & Admission Intake</p>', unsafe_allow_html=True)
     
-    # Initialize session state keys for the inputs if they don't exist yet
-    if "form_hh_id" not in st.session_state:
-        st.session_state.form_hh_id = ""
-    if "form_name" not in st.session_state:
-        st.session_state.form_name = ""
-    if "form_phone" not in st.session_state:
-        st.session_state.form_phone = ""
+    # We use an app-level generation key. Advancing this number forces all inputs to completely reset naturally.
+    if "form_generation" not in st.session_state:
+        st.session_state.form_generation = 0
 
-    with st.form('nutrition_edema_sam_form', clear_on_submit=False):
+    # Creating a unique form container string based on our generation tracker
+    with st.form(key=f'nutrition_form_gen_{st.session_state.form_generation}', clear_on_submit=False):
         st.markdown("##### 📍 Geographic Identifiers")
         geo_col1, geo_col2, geo_col3 = st.columns(3)
         with geo_col1:
@@ -88,8 +84,8 @@ with col1:
             cluster_no = st.number_input('Cluster Number', min_value=1, max_value=999, value=1, step=1)
             
         st.markdown("##### 👶 Participant Demographics")
-        hh_id = st.text_input('Household ID', key="form_hh_id")
-        name = st.text_input('Participant Full Name', key="form_name")
+        hh_id = st.text_input('Household ID')
+        name = st.text_input('Participant Full Name')
         
         sub_col1, sub_col2 = st.columns(2)
         with sub_col1:
@@ -104,7 +100,7 @@ with col1:
         with anthro_col2:
             edema = st.selectbox('Edema Status (Bilateral Pitting Edema)', options=['Absent ( - )', 'Present ( +++ )'])
         
-        phone_number = st.text_input('Contact Phone Number', key="form_phone")
+        phone_number = st.text_input('Contact Phone Number')
         
         st.markdown(" ")
         btn_col1, btn_col2 = st.columns([1, 1])
@@ -113,11 +109,9 @@ with col1:
         with btn_col2:
             clear_submitted = st.form_submit_button('Reset Blank Layout')
 
-        # Clear Action Execution
+        # If Clear is clicked, change the key generation index to reset the form inputs natively
         if clear_submitted:
-            st.session_state.form_hh_id = ""
-            st.session_state.form_name = ""
-            st.session_state.form_phone = ""
+            st.session_state.form_generation += 1
             st.rerun()
 
         if submitted:
@@ -139,10 +133,8 @@ with col1:
                 updated_df = pd.concat([current_df, new_record], ignore_index=True)
                 save_survey_data(updated_df)
                 
-                # Auto clear form inputs upon successful logging
-                st.session_state.form_hh_id = ""
-                st.session_state.form_name = ""
-                st.session_state.form_phone = ""
+                # Advance generation here too to instantly clear out all fields for the next patient entry
+                st.session_state.form_generation += 1
                 
                 st.success(f'✅ Successfully logged case record for {name}.')
                 st.rerun()
